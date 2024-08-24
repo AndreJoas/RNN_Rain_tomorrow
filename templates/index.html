@@ -1,0 +1,132 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" type="text/css" href="static/styles.css" media="screen" />
+        <title>Modelo Keras Web Interface</title>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Configuração do Modelo Keras</h1>
+            <h2>"Será que vai chover amanhar?"</h2>
+
+            <div id="layers-config">
+                <div class="layer-config">
+                    <h3>Camadas</h3>
+                    <label>Unidades:</label>
+                    <input type="number" name="units" placeholder="Número de unidades" required>
+                    <label>Função de ativação:</label>
+                    <select name="activation" required>
+                        <option value="relu">ReLU</option>
+                        <option value="sigmoid">Sigmoid</option>
+                        <option value="tanh">Tanh</option>
+                    </select>
+                    <button type="button" class="button" onclick="addLayer()">Adicionar camada</button>
+                </div>
+            </div>
+            
+            <div>
+                <h3>Otimização</h3>
+                <label>Otimizador:</label>
+                <select id="optimizer" required>
+                    <option value="adam">Adam</option>
+                    <option value="sgd">SGD</option>
+                    <option value="rmsprop">RMSprop</option>
+                </select>
+                
+                <label>Função de perda:</label>
+                <select id="loss" required>
+                    <option value="binary_crossentropy">Binary Crossentropy</option>
+                    <option value="mean_squared_error">Mean Squared Error</option>
+                </select>
+                
+                <label>Métricas:</label>
+                <select id="metrics" multiple required>
+                    <option value="accuracy">Accuracy</option>
+                    <option value="precision">Precision</option>
+                    <option value="recall">Recall</option>
+                </select>
+                
+                <label>Épocas:</label>
+                <input type="number" id="epochs" value="20" required>
+                
+                <label>Validation Split:</label>
+                <input type="number" id="validation_split" step="0.01" value="0.2" required>
+                
+                <button class="button" onclick="trainModel()">Rodar</button>
+                
+                <div id="loading" class="loading" style="display:none;">Carregando...</div>
+            </div>
+            
+            <div id="results">
+                <h3>Resultados</h3>
+                <pre id="results-output"></pre>
+            </div>
+        </div>
+
+        <script>
+            function addLayer() {
+                const container = document.getElementById('layers-config');
+                const layerDiv = document.createElement('div');
+                layerDiv.className = 'layer-config';
+                
+                layerDiv.innerHTML = `
+                    <h3>Camada</h3>
+                    <label>Unidades:</label>
+                    <input type="number" name="units" placeholder="Número de unidades" required>
+                    <label>Função de ativação:</label>
+                    <select name="activation" required>
+                        <option value="relu">ReLU</option>
+                        <option value="sigmoid">Sigmoid</option>
+                        <option value="tanh">Tanh</option>
+                    </select>
+                `;
+                
+                container.appendChild(layerDiv);
+            }
+
+            function trainModel() {
+                const layersConfig = Array.from(document.querySelectorAll('#layers-config .layer-config')).map(div => {
+                    return {
+                        units: parseInt(div.querySelector('input[name="units"]').value),
+                        activation: div.querySelector('select[name="activation"]').value
+                    };
+                });
+
+                const data = {
+                    layers: layersConfig,
+                    optimizer: document.getElementById('optimizer').value,
+                    loss: document.getElementById('loss').value,
+                    metrics: Array.from(document.getElementById('metrics').selectedOptions).map(option => option.value),
+                    epochs: parseInt(document.getElementById('epochs').value),
+                    validation_split: parseFloat(document.getElementById('validation_split').value)
+                };
+
+                document.getElementById('loading').style.display = 'block';
+                
+                fetch('/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => { throw new Error(text); });
+                    }
+                    return response.json();
+                })
+                .then(results => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('results-output').textContent = JSON.stringify(results, null, 2);
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    console.error('Error:', error);
+                });
+            }
+        </script>
+    </body>
+    </html>
